@@ -224,36 +224,7 @@
   </script>
 </body>
 </html>
-messageElement.textContent
-// 原本可能長這樣：
-// messageElement.textContent = text;
 
-// 改成這樣（讓新發送的留言帶有黑色頭像與黑色對話框）：
-messageElement.className = "message-item self";
-messageElement.innerHTML = `
-  <div class="avatar avatar-black">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-      <circle cx="12" cy="7" r="4"></circle>
-    </svg>
-  </div>
-  <div class="message-content">
-    <span class="sender-name">You</span>
-    <div class="bubble bubble-black">${text}</div>
-  </div>
-<!-- 他人的留言 -->
-<div class="message-item other">
-  <div class="avatar avatar-black">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-      <circle cx="12" cy="7" r="4"></circle>
-    </svg>
-  </div>
-  <div class="message-content">
-    <span class="sender-name">對方暱稱</span>
-    <div class="bubble bubble-gray">留言內容...</div>
-  </div>
-</div>
 
 `;
 
