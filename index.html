@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>公開留言板</title>
+  <title>別這麼說留言板</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -29,6 +29,10 @@
     }
     .form-group {
       margin-bottom: 12px;
+    }
+    .form-row {
+      display: flex;
+      gap: 10px;
     }
     input, textarea {
       width: 100%;
@@ -84,6 +88,11 @@
       color: #999;
       margin-top: 20px;
     }
+    .hint-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -91,10 +100,13 @@
   <div class="container">
     <h2>💬 公開留言板</h2>
     
-    <div class="form-group">
-      <input type="text" id="username" placeholder="輸入您的名字">
+    <div class="form-group form-row">
+      <input type="text" id="username" placeholder="您的名字">
+      <input type="password" id="userpass" placeholder="防冒用密碼">
     </div>
-    <div class="form-group">
+    <div class="hint-text">💡 首次使用該名字設定的密碼即為專屬密碼，請妥善保管。</div>
+    
+    <div class="form-group" style="margin-top: 12px;">
       <textarea id="message" rows="3" placeholder="想說的話..."></textarea>
     </div>
     <button id="sendBtn">發布留言</button>
@@ -108,7 +120,7 @@
   <!-- 載入 Firebase 功能 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     // 您的 Firebase 連結金鑰
     const firebaseConfig = {
@@ -126,30 +138,58 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const postsRef = ref(db, 'messages');
+    const usersRef = ref(db, 'users');
 
     // 送出留言按鈕功能
-    document.getElementById('sendBtn').addEventListener('click', () => {
+    document.getElementById('sendBtn').addEventListener('click', async () => {
       const nameInput = document.getElementById('username');
+      const passInput = document.getElementById('userpass');
       const textInput = document.getElementById('message');
       
       const name = nameInput.value.trim();
+      const pass = passInput.value.trim();
       const text = textInput.value.trim();
 
-      if (!name || !text) {
-        alert('請填寫名字與內容喔！');
+      if (!name || !pass || !text) {
+        alert('請填寫名字、防冒用密碼與留言內容喔！');
         return;
       }
 
-      // 將留言推送到資料庫
-      push(postsRef, {
-        username: name,
-        message: text,
-        timestamp: Date.now()
-      }).then(() => {
+      // 安全名字 key (去除特殊字元)
+      const userKey = name.replace(/[.#$/[\]]/g, "_");
+
+      try {
+        // 檢查名字是否已被註冊密碼
+        const userSnapshot = await get(child(usersRef, userKey));
+        
+        if (userSnapshot.exists()) {
+          // 名字存在，檢查密碼是否正確
+          const savedPass = userSnapshot.val();
+          if (savedPass !== pass) {
+            alert('❌ 密碼錯誤！這個名字已被其他人使用並設定了密碼。');
+            return;
+          }
+        } else {
+          // 新名字，綁定設定的密碼
+          await push(ref(db, `users/${userKey}`), pass);
+          // 使用 set 紀錄
+          const userSpecificRef = ref(db, `users/${userKey}`);
+          await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js").then(m => m.set(userSpecificRef, pass));
+        }
+
+        // 推送留言
+        await push(postsRef, {
+          username: name,
+          message: text,
+          timestamp: Date.now()
+        });
+
         textInput.value = ''; // 清空留言輸入框
-      }).catch((err) => {
-        alert('送出失敗，請檢查網路設定：' + err.message);
-      });
+        alert('✅ 留言成功！');
+
+      } catch (err) {
+        alert('送出失敗：' + err.message);
+      }
     });
 
     // 即時監聽資料庫更新並顯示
